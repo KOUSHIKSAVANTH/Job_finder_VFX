@@ -1,0 +1,50 @@
+{
+    "profile": {
+        "name": "sawanth koushik",
+        "first_name": "sawanth",
+        "last_name": "koushik",
+        "email": "koushiksawanth8860@gmail.com",
+        "phone": "7353803694",
+        "location": "Bangalore, India",
+        "linkedin": "https://tinyurl.com/2eu6zeff",
+        "github": "https://github.com/KOUSHIKSAVANTH",
+        "portfolio_url": "https://youtu.be/CAJ7sPsg7XU?si=KCeQjx9qYj5NLCpB",
+        "education": "B.E Computer Science",
+        "experience": "Fresher",
+        "skills": "Python, Nuke, Rotoscoping, Keying, VFX, Compositing, keying, paint/prep",
+        "resume": "files/resume.pdf"
+    },
+    "job_preferences": {
+        "roles": [
+            "Junior Compositor",
+            "Compositor",
+            "Nuke Artist",
+            "Paint/prep Artist",
+            "Technical Artist",
+            "Roto Artist",
+            "Keying Artist",
+            "VFX Artist",
+            "VFX Compositor"
+        ],
+        "locations": [
+            "India"
+        ],
+        "keywords": [
+            "VFX",
+            "Animation",
+            "Film",
+            "Studio",
+            "Compositing",
+            "Nuke",
+            "Rotoscoping",
+            "Keying",
+            "Paint/prep",
+            "Technical Artist",
+            "Junior Compositor",
+            "VFX Artist",
+            "VFX Compositor"
+        ],
+        "max_jobs_per_run": 20,
+        "auto_submit": true
+    }
+}
