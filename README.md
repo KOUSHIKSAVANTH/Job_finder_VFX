@@ -356,3 +356,5 @@ SQLite Tracking
 The code is intentionally kept separate from this README. The README is
 documentation for understanding, installing, configuring, and running
 the project.
+
+NOTE: You have create an account in any one of the search api and paste the key in .env or else this automation will not work, there are several search api's which give free trial version like bravesearch, searchapi, exa etc.. in this project i used "Tavily" . which gives 1000 free credits every month.
