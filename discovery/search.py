@@ -1,8 +1,6 @@
 import os
 import requests
 
-from urllib.parse import quote
-
 
 class JobSearch:
 
@@ -16,7 +14,7 @@ class JobSearch:
         self.log = log
 
         self.api_key = os.getenv(
-            "SEARCH_API_KEY"
+            "TAVILY_API_KEY"
         )
 
     def build_queries(self):
@@ -56,23 +54,22 @@ class JobSearch:
         if not self.api_key:
 
             self.log(
-                "SEARCH_API_KEY is missing."
+                "TAVILY_API_KEY is missing."
             )
 
             return []
 
         self.log(
-            f"Searching: {query}"
+            f"Searching with Tavily: {query}"
         )
 
-        # Search provider endpoint.
-        # The provider response is normalized below.
-        response = requests.get(
-            "https://www.searchapi.io/api/v1/search",
-            params={
-                "engine": "google",
-                "q": query,
-                "api_key": self.api_key
+        response = requests.post(
+            "https://api.tavily.com/search",
+            json={
+                "api_key": self.api_key,
+                "query": query,
+                "search_depth": "basic",
+                "max_results": 10
             },
             timeout=30
         )
@@ -84,11 +81,11 @@ class JobSearch:
         results = []
 
         for item in data.get(
-            "organic_results",
+            "results",
             []
         ):
 
-            url = item.get("link")
+            url = item.get("url")
 
             if not url:
                 continue
@@ -102,11 +99,11 @@ class JobSearch:
                 "url": url,
 
                 "snippet": item.get(
-                    "snippet",
+                    "content",
                     ""
                 ),
 
-                "source": "Search"
+                "source": "Tavily"
             })
 
         return results

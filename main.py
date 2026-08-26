@@ -1,5 +1,7 @@
 import json
+import os
 
+from pathlib import Path
 from dotenv import load_dotenv
 
 from database import Database
@@ -33,7 +35,41 @@ def load_config():
 
 def main():
 
-    load_dotenv()
+    # Load .env from the same folder as main.py
+    env_path = Path(__file__).resolve().parent / ".env"
+
+    env_loaded = load_dotenv(
+        dotenv_path=env_path
+    )
+
+    print(
+        "ENV FILE:",
+        env_path
+    )
+
+    print(
+        "ENV FILE EXISTS:",
+        env_path.exists()
+    )
+
+    print(
+        "ENV LOADED:",
+        env_loaded
+    )
+
+    print(
+        "TAVILY VARIABLE EXISTS:",
+        "TAVILY_API_KEY" in os.environ
+    )
+
+    print(
+        "TAVILY KEY FOUND:",
+        bool(
+            os.getenv(
+                "TAVILY_API_KEY"
+            )
+        )
+    )
 
     config = load_config()
 
@@ -49,7 +85,9 @@ def main():
 
     try:
 
-        log("Starting Job Finder Autopilot...")
+        log(
+            "Starting Job Finder Autopilot..."
+        )
 
         search = JobSearch(
             preferences,
