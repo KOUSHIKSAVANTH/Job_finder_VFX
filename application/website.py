@@ -187,7 +187,11 @@ class WebsiteApplication:
                     selector
                 ).first
 
-                if button.count() and button.is_visible():
+                if (
+                    button.count()
+                    and button.is_visible()
+                    and button.is_enabled()
+                ):
 
                     button.click()
 
@@ -197,6 +201,32 @@ class WebsiteApplication:
                 continue
 
         return False
+
+    def submission_confirmed(self, previous_url):
+
+        try:
+            current_url = self.page.url
+
+            if current_url != previous_url:
+                return True
+
+            text = self.page.locator(
+                "body"
+            ).inner_text().lower()
+
+            return any(
+                phrase in text
+                for phrase in [
+                    "thank you",
+                    "application received",
+                    "application submitted",
+                    "successfully submitted",
+                    "confirmation"
+                ]
+            )
+
+        except Exception:
+            return False
 
     def run(self):
 
@@ -213,7 +243,21 @@ class WebsiteApplication:
 
         self.upload()
 
+        previous_url = self.page.url
+
         if self.submit():
+
+            self.page.wait_for_timeout(
+                1500
+            )
+
+            if not self.submission_confirmed(
+                previous_url
+            ):
+                return (
+                    "Manual Required",
+                    "Submission was not confirmed."
+                )
 
             return (
                 "Applied",

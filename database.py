@@ -43,6 +43,17 @@ class Database:
 
         return cursor.fetchone() is not None
 
+    def get_status(self, url):
+
+        cursor = self.connection.execute(
+            "SELECT status FROM jobs WHERE url = ?",
+            (url,)
+        )
+
+        row = cursor.fetchone()
+
+        return row[0] if row else None
+
     def add(
         self,
         url,

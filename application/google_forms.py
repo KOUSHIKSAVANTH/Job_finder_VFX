@@ -165,6 +165,30 @@ class GoogleFormsApplication:
             except Exception:
                 continue
 
+    def submission_confirmed(self, previous_url):
+
+        try:
+            if self.page.url != previous_url:
+                return True
+
+            text = self.page.locator(
+                "body"
+            ).inner_text().lower()
+
+            return any(
+                phrase in text
+                for phrase in [
+                    "response has been recorded",
+                    "your response has been recorded",
+                    "submitted",
+                    "thank you",
+                    "confirmation"
+                ]
+            )
+
+        except Exception:
+            return False
+
     def run(self):
 
         while True:
@@ -187,13 +211,38 @@ class GoogleFormsApplication:
                 exact=True
             )
 
-            if submit.count():
+            submit_button = None
 
-                submit.last.click()
+            for index in range(
+                submit.count()
+            ):
+
+                candidate = submit.nth(index)
+
+                if (
+                    candidate.is_visible()
+                    and candidate.is_enabled()
+                ):
+                    submit_button = candidate
+                    break
+
+            if submit_button:
+
+                previous_url = self.page.url
+
+                submit_button.click()
 
                 self.page.wait_for_timeout(
                     2000
                 )
+
+                if not self.submission_confirmed(
+                    previous_url
+                ):
+                    return (
+                        "Manual Required",
+                        "Submission was not confirmed."
+                    )
 
                 return (
                     "Applied",
@@ -205,9 +254,24 @@ class GoogleFormsApplication:
                 exact=True
             )
 
-            if next_button.count():
+            next_control = None
 
-                next_button.last.click()
+            for index in range(
+                next_button.count()
+            ):
+
+                candidate = next_button.nth(index)
+
+                if (
+                    candidate.is_visible()
+                    and candidate.is_enabled()
+                ):
+                    next_control = candidate
+                    break
+
+            if next_control:
+
+                next_control.click()
 
                 self.page.wait_for_timeout(
                     1000

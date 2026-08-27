@@ -249,20 +249,20 @@ The original MVP uses a search provider API key for automated job
 discovery.
 Your `.env` should contain:
 ``` text
-SEARCH_API_KEY=YOUR_REAL_SEARCH_API_KEY
+TAVILY_API_KEY=YOUR_REAL_TAVILY_API_KEY
 
 JOB_FINDER_EMAIL=your_email@example.com
 JOB_FINDER_APP_PASSWORD=your_email_app_password
 ```
 Replace:
 ``` text
-YOUR_REAL_SEARCH_API_KEY
+YOUR_REAL_TAVILY_API_KEY
 ```
 with your actual API key from the search provider selected for the
 project.
 Do not leave the placeholder value:
 ``` text
-PUT_YOUR_SEARCH_API_KEY_HERE
+PUT_YOUR_TAVILY_API_KEY_HERE
 ```
 Otherwise the search provider will reject the request and job discovery
 can return `401 Unauthorized` errors.

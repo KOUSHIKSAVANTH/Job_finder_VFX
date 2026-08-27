@@ -2,8 +2,40 @@ import os
 import re
 import requests
 
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
 
 class JobSearch:
+
+    @staticmethod
+    def normalize_url(url):
+
+        parts = urlsplit(str(url).strip())
+
+        ignored_parameters = {
+            "fbclid",
+            "gclid"
+        }
+
+        query = [
+            (key, value)
+            for key, value in parse_qsl(
+                parts.query,
+                keep_blank_values=True
+            )
+            if not key.lower().startswith("utm_")
+            and key.lower() not in ignored_parameters
+        ]
+
+        path = parts.path.rstrip("/") or "/"
+
+        return urlunsplit((
+            parts.scheme.lower(),
+            parts.netloc.lower(),
+            path,
+            urlencode(query),
+            ""
+        ))
 
     def __init__(
         self,
@@ -58,6 +90,15 @@ class JobSearch:
                     )
                 )
 
+                queries.append(
+                    (
+                        role,
+                        f'site:linkedin.com/posts '
+                        f'"{role}" "{location}" '
+                        f'(hiring OR "looking for" OR apply)'
+                    )
+                )
+
         return queries
 
 
@@ -69,10 +110,10 @@ class JobSearch:
         role
     ):
 
-        title_lower = title.lower()
-        url_lower = url.lower()
-        snippet_lower = snippet.lower()
-        role_lower = role.lower()
+        title_lower = str(title or "").lower()
+        url_lower = str(url or "").lower()
+        snippet_lower = str(snippet or "").lower()
+        role_lower = str(role or "").lower()
 
         # Websites that should never be treated
         # as job vacancies
@@ -168,14 +209,40 @@ class JobSearch:
             "employment",
         ]
 
-        has_role = (
-            role_lower in combined_text
+        role_variants = [
+            role_lower,
+            role_lower.replace(
+                "compositor",
+                "compositing artist"
+            ),
+            role_lower.replace(
+                "paint/prep",
+                "paint prep"
+            ),
+            role_lower.replace(
+                "paint/prep",
+                "paint-prep"
+            )
+        ]
+
+        has_role = any(
+            variant in combined_text
+            for variant in role_variants
+            if variant
         )
 
         has_job_signal = any(
             signal in combined_text
             for signal in job_signals
         )
+
+        is_linkedin_post = (
+            "linkedin.com/posts/" in url_lower
+            or "linkedin.com/feed/update/" in url_lower
+        )
+
+        if is_linkedin_post and not has_role:
+            return False
 
         if not has_role and not has_job_signal:
             return False
@@ -221,6 +288,7 @@ class JobSearch:
         data = response.json()
 
         results = []
+        skipped_results = 0
 
 
         for item in data.get(
@@ -254,20 +322,34 @@ class JobSearch:
                 role
             ):
 
-                self.log(
-                    f"Rejected irrelevant result: "
-                    f"{title}"
-                )
+                skipped_results += 1
 
                 continue
 
+
+            is_linkedin_post = (
+                "linkedin.com/posts/" in str(url).lower()
+                or "linkedin.com/feed/update/"
+                in str(url).lower()
+            )
 
             results.append({
                 "title": title,
                 "url": url,
                 "snippet": snippet,
-                "source": "Tavily"
+                "source": (
+                    "LinkedIn public post"
+                    if is_linkedin_post
+                    else "Tavily"
+                ),
+                "is_linkedin_post": is_linkedin_post
             })
+
+        if skipped_results:
+            self.log(
+                f"Skipped {skipped_results} non-matching "
+                f"results for this query."
+            )
 
 
         return results
@@ -280,10 +362,19 @@ class JobSearch:
             []
         )
 
-        max_jobs = self.preferences.get(
-            "max_jobs_per_run",
-            20
-        )
+        try:
+            max_jobs = max(
+                0,
+                int(self.preferences.get(
+                    "max_jobs_per_run",
+                    20
+                ))
+            )
+        except (TypeError, ValueError):
+            self.log(
+                "Invalid max_jobs_per_run; using 20."
+            )
+            max_jobs = 20
 
 
         if not roles:
@@ -316,7 +407,9 @@ class JobSearch:
 
                 for job in results:
 
-                    url = job["url"]
+                    url = self.normalize_url(
+                        job["url"]
+                    )
 
 
                     if url in seen_urls:
@@ -329,6 +422,7 @@ class JobSearch:
 
 
                     job["role"] = role
+                    job["url"] = url
 
 
                     jobs_by_role[

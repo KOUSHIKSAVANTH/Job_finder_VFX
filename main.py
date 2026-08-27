@@ -108,7 +108,11 @@ def main():
         router = ApplicationRouter(
             browser,
             profile,
-            log
+            log,
+            auto_submit=preferences.get(
+                "auto_submit",
+                False
+            )
         )
 
         for number, job in enumerate(
@@ -123,10 +127,19 @@ def main():
                 ""
             )
 
-            if database.exists(url):
+            previous_status = database.get_status(
+                url
+            )
+
+            if previous_status in [
+                "Applied",
+                "Sent",
+                "Manual Required"
+            ]:
 
                 log(
-                    f"Skipping duplicate: {url}"
+                    f"Skipping {previous_status.lower()}: "
+                    f"{url}"
                 )
 
                 continue
@@ -167,11 +180,24 @@ def main():
 
                     url=url,
 
+                    application_links=extracted[
+                        "application_links"
+                    ],
+
                     company="Unknown Company",
 
                     role=title,
 
-                    emails=extracted["emails"]
+                    emails=extracted["emails"],
+
+                    post_emails=extracted[
+                        "post_emails"
+                    ],
+
+                    linkedin_post=job.get(
+                        "is_linkedin_post",
+                        False
+                    )
                 )
 
                 database.update_status(

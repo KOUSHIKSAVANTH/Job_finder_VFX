@@ -17,71 +17,133 @@ class ApplicationRouter:
         self,
         browser,
         profile,
-        log=print
+        log=print,
+        auto_submit=False
     ):
 
         self.browser = browser
         self.profile = profile
         self.log = log
+        self.auto_submit = auto_submit
+
+    def _select_email(
+        self,
+        emails,
+        allow_personal=False
+    ):
+
+        application_signals = [
+            "apply",
+            "career",
+            "hiring",
+            "recruit",
+            "job"
+        ]
+
+        blocked_signals = [
+            "admin",
+            "info",
+            "privacy",
+            "support",
+            "noreply",
+            "no-reply",
+            " webmaster"
+        ]
+
+        for email in emails:
+            normalized = email.lower()
+
+            if any(
+                signal in normalized
+                for signal in blocked_signals
+            ):
+                continue
+
+            if any(
+                signal in normalized
+                for signal in application_signals
+            ) or allow_personal:
+                return email
+
+        return None
 
     def apply(
         self,
         url,
         company,
         role,
-        emails=None
+        emails=None,
+        application_links=None,
+        post_emails=None,
+        linkedin_post=False
     ):
 
         emails = emails or []
+        application_links = application_links or []
+        post_emails = post_emails or []
 
-        # Direct Google Form
-        if "docs.google.com/forms" in url:
-
-            page = self.browser.open(url)
-
-            automation = (
-                GoogleFormsApplication(
-                    page,
-                    self.profile,
-                    self.log
-                )
+        if not self.auto_submit:
+            return (
+                "Manual Required",
+                "Automatic submission is disabled."
             )
 
-            return automation.run()
+        post_email = self._select_email(
+            post_emails,
+            allow_personal=True
+        ) if linkedin_post else None
 
-        # If the job specifically exposes
-        # a contact email, send automatically.
-        if emails:
+        has_application_link = bool(
+            application_links
+        ) and not post_email
 
+        application_url = (
+            application_links[0]
+            if has_application_link
+            else url
+        )
+
+        if post_email:
+            email = post_email
+        elif not has_application_link:
+            email = self._select_email(emails)
+        else:
+            email = None
+
+        if email:
             try:
-
                 EmailApplication(
                     self.profile
                 ).send(
-                    emails[0],
+                    email,
                     company,
                     role
                 )
 
                 return (
                     "Sent",
-                    f"Resume emailed to {emails[0]}"
+                    f"Resume emailed to {email}"
                 )
 
             except Exception as error:
-
                 return (
                     "Failed",
                     str(error)
                 )
 
-        # General website
-        page = self.browser.open(url)
+        if "docs.google.com/forms" in application_url:
+            page = self.browser.open(application_url)
 
-        automation = WebsiteApplication(
+            return GoogleFormsApplication(
+                page,
+                self.profile,
+                self.log
+            ).run()
+
+        page = self.browser.open(application_url)
+
+        return WebsiteApplication(
             page,
             self.profile,
             self.log
-        )
-
-        return automation.run()
+        ).run()
