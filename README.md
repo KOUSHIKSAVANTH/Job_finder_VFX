@@ -278,6 +278,19 @@ Then run:
 ``` powershell
 python main.py
 ```
+
+Reports
+-------
+Each run creates an Excel report at:
+``` text
+reports/job_report.xlsx
+```
+Timestamped copies are saved in:
+``` text
+reports/history/
+```
+The report includes every discovered URL, status, new or previously
+recorded state, contact emails, application links, and run details.
 The autopilot will begin its configured workflow.
 ---
 Expected behavior

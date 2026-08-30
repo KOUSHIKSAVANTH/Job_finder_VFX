@@ -1,6 +1,7 @@
 import json
 import os
 
+from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -13,6 +14,8 @@ from application.browser import Browser
 from application.router import (
     ApplicationRouter
 )
+
+from report import write_report
 
 
 def log(message):
@@ -133,6 +136,10 @@ def main():
 
         skipped_count = 0
         result_counts = {}
+        report_rows = []
+        run_time = datetime.now().isoformat(
+            timespec="seconds"
+        )
         retry_manual = preferences.get(
             "retry_manual",
             False
@@ -172,6 +179,17 @@ def main():
                     f"Skipping {previous_status.lower()}: "
                     f"{url}"
                 )
+
+                report_rows.append({
+                    "run_time": run_time,
+                    "change": "Already recorded",
+                    "status": previous_status,
+                    "title": title,
+                    "role": job.get("role", ""),
+                    "url": url,
+                    "source": job.get("source", ""),
+                    "details": "Skipped by database history."
+                })
 
                 continue
 
@@ -257,6 +275,26 @@ def main():
                     details
                 )
 
+                report_rows.append({
+                    "run_time": run_time,
+                    "change": (
+                        "Updated" if previous_status
+                        else "New opportunity"
+                    ),
+                    "status": status,
+                    "title": title,
+                    "role": job.get("role", ""),
+                    "url": url,
+                    "source": job.get("source", ""),
+                    "emails": "; ".join(
+                        extracted["emails"]
+                    ),
+                    "application_links": "; ".join(
+                        extracted["application_links"]
+                    ),
+                    "details": details
+                })
+
             except Exception as error:
 
                 database.update_status(
@@ -271,6 +309,32 @@ def main():
                 log(
                     f"FAILED: {error}"
                 )
+
+                report_rows.append({
+                    "run_time": run_time,
+                    "change": (
+                        "Updated" if previous_status
+                        else "New opportunity"
+                    ),
+                    "status": "Failed",
+                    "title": title,
+                    "role": job.get("role", ""),
+                    "url": url,
+                    "source": job.get("source", ""),
+                    "details": str(error)
+                })
+
+        current_report, history_report = write_report(
+            report_rows
+        )
+
+        log(
+            f"Excel report: {current_report}"
+        )
+
+        log(
+            f"Report history: {history_report}"
+        )
 
         log(
             "\nRun summary: "

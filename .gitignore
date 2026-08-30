@@ -24,3 +24,6 @@ Thumbs.db
 
 # job data
 data/
+
+# Generated Excel reports
+reports/
