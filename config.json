@@ -16,14 +16,11 @@
     },
     "job_preferences": {
         "roles": [
-            "Junior Compositor",
             "Compositor",
             "Nuke Artist",
             "Paint/prep Artist",
-            "Technical Artist",
             "Roto Artist",
             "Keying Artist",
-            "VFX Artist",
             "VFX Compositor"
         ],
         "locations": [
@@ -45,6 +42,7 @@
             "VFX Compositor"
         ],
         "max_jobs_per_run": 20,
-        "auto_submit": true
+        "auto_submit": true,
+        "retry_manual": true
     }
 }

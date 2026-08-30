@@ -115,6 +115,16 @@ class JobSearch:
         snippet_lower = str(snippet or "").lower()
         role_lower = str(role or "").lower()
 
+        parsed_url = urlsplit(
+            str(url or "").strip()
+        )
+
+        if parsed_url.scheme not in [
+            "http",
+            "https"
+        ] or not parsed_url.netloc:
+            return False
+
         # Websites that should never be treated
         # as job vacancies
         blocked_domains = [
@@ -170,6 +180,12 @@ class JobSearch:
             "/search",
             "job-search",
             "jobs-in-india",
+            "linkedin.com/jobs",
+            "naukri.com/",
+            "instahyre.com/",
+            "animationandvfxjobs.com/",
+            "ziprecruiter.com/jobs",
+            "/browse-careers"
         ]
 
         if any(

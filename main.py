@@ -79,6 +79,22 @@ def main():
         config["job_preferences"]
     )
 
+    print(
+        "AUTO SUBMIT:",
+        preferences.get(
+            "auto_submit",
+            False
+        )
+    )
+
+    print(
+        "RETRY MANUAL:",
+        preferences.get(
+            "retry_manual",
+            False
+        )
+    )
+
     database = Database()
 
     browser = Browser()
@@ -115,6 +131,13 @@ def main():
             )
         )
 
+        skipped_count = 0
+        result_counts = {}
+        retry_manual = preferences.get(
+            "retry_manual",
+            False
+        )
+
         for number, job in enumerate(
             jobs,
             start=1
@@ -131,11 +154,19 @@ def main():
                 url
             )
 
-            if previous_status in [
+            terminal_statuses = [
                 "Applied",
-                "Sent",
-                "Manual Required"
-            ]:
+                "Sent"
+            ]
+
+            if not retry_manual:
+                terminal_statuses.append(
+                    "Manual Required"
+                )
+
+            if previous_status in terminal_statuses:
+
+                skipped_count += 1
 
                 log(
                     f"Skipping {previous_status.lower()}: "
@@ -143,6 +174,11 @@ def main():
                 )
 
                 continue
+
+            if previous_status == "Manual Required":
+                log(
+                    f"Retrying manual record: {url}"
+                )
 
             log(
                 f"\n[{number}/{len(jobs)}]"
@@ -209,6 +245,10 @@ def main():
                     details
                 )
 
+                result_counts[status] = (
+                    result_counts.get(status, 0) + 1
+                )
+
                 log(
                     f"RESULT: {status}"
                 )
@@ -233,7 +273,16 @@ def main():
                 )
 
         log(
-            "\nAutopilot run completed."
+            "\nRun summary: "
+            f"{skipped_count} already processed, "
+            + ", ".join(
+                f"{status}={count}"
+                for status, count in result_counts.items()
+            )
+        )
+
+        log(
+            "Autopilot run completed."
         )
 
     finally:

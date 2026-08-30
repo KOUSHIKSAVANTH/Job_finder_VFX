@@ -15,18 +15,21 @@ class Browser:
 
     def start(self):
 
-        # Reuse the existing browser only if
-        # it is still connected.
-        if (
-            self.browser
-            and self.browser.is_connected()
-            and self.page
-            and not self.page.is_closed()
-        ):
+        if self.browser and self.browser.is_connected():
 
-            return self.page
+            if self.page and not self.page.is_closed():
+                return self.page
 
-        # Reset closed objects before starting again.
+            if self.context:
+                self.page = self.context.new_page()
+                return self.page
+
+        if self.playwright:
+            try:
+                self.playwright.stop()
+            except Exception:
+                pass
+
         self.playwright = (
             sync_playwright().start()
         )
