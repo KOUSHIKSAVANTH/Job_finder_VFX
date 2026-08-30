@@ -3,6 +3,7 @@ import re
 import requests
 
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from difflib import SequenceMatcher
 
 
 class JobSearch:
@@ -238,14 +239,61 @@ class JobSearch:
             role_lower.replace(
                 "paint/prep",
                 "paint-prep"
+            ),
+            role_lower.replace(
+                "paint/prep artist",
+                "paint artist"
+            ),
+            role_lower.replace(
+                "artist",
+                "artists"
+            ),
+            role_lower.replace(
+                "artists",
+                "artist"
             )
         ]
+
+        normalized_text = re.sub(
+            r"[^a-z0-9]+",
+            " ",
+            combined_text
+        )
+
+        normalized_role = re.sub(
+            r"[^a-z0-9]+",
+            " ",
+            role_lower
+        ).strip()
+
+        role_tokens = [
+            token
+            for token in normalized_role.split()
+            if len(token) > 2
+        ]
+
+        token_matches = sum(
+            token in normalized_text
+            for token in role_tokens
+        )
+
+        fuzzy_role_match = (
+            bool(normalized_role)
+            and SequenceMatcher(
+                None,
+                normalized_role,
+                normalized_text
+            ).ratio() >= 0.35
+        )
 
         has_role = any(
             variant in combined_text
             for variant in role_variants
             if variant
-        )
+        ) or (
+            bool(role_tokens)
+            and token_matches == len(role_tokens)
+        ) or fuzzy_role_match
 
         has_job_signal = any(
             signal in combined_text

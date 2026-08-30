@@ -19,6 +19,17 @@ class JobExtractor:
     def extract(self, job):
 
         url = job["url"]
+        snippet = str(
+            job.get("snippet", "")
+        )
+        post_emails = list(set(
+            re.findall(
+                r"[A-Za-z0-9._%+-]+@"
+                r"[A-Za-z0-9.-]+"
+                r"\.[A-Za-z]{2,}",
+                snippet
+            )
+        ))
 
         self.log(
             f"Inspecting: {url}"
@@ -36,25 +47,12 @@ class JobExtractor:
                 strip=True
             )
 
-            snippet = str(
-                job.get("snippet", "")
-            )
-
             emails = list(set(
                 re.findall(
                     r"[A-Za-z0-9._%+-]+@"
                     r"[A-Za-z0-9.-]+"
                     r"\.[A-Za-z]{2,}",
                     " ".join([snippet, text])
-                )
-            ))
-
-            post_emails = list(set(
-                re.findall(
-                    r"[A-Za-z0-9._%+-]+@"
-                    r"[A-Za-z0-9.-]+"
-                    r"\.[A-Za-z]{2,}",
-                    snippet
                 )
             ))
 
@@ -120,6 +118,6 @@ class JobExtractor:
             return {
                 "page_url": url,
                 "emails": [],
-                "post_emails": [],
+                "post_emails": post_emails,
                 "application_links": []
             }
