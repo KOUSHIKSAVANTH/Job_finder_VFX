@@ -15,7 +15,7 @@ from application.router import (
     ApplicationRouter
 )
 
-from report import write_report
+from report import get_applied_urls, write_report
 
 
 def log(message):
@@ -144,6 +144,7 @@ def main():
             "retry_manual",
             False
         )
+        applied_urls = get_applied_urls(Path(__file__).resolve().parent)
 
         for number, job in enumerate(
             jobs,
@@ -151,6 +152,24 @@ def main():
         ):
 
             url = job["url"]
+
+            if url in applied_urls:
+                skipped_count += 1
+                log(
+                    f"Skipping marked applied in Excel: {url}"
+                )
+                report_rows.append({
+                    "run_time": run_time,
+                    "change": "Filtered by Excel",
+                    "status": "Applied (manual)",
+                    "title": job.get("title", ""),
+                    "role": job.get("role", ""),
+                    "url": url,
+                    "source": job.get("source", ""),
+                    "details": "Skipped because the Excel 'Applied?' column says Applied.",
+                    "applied_status": "Applied"
+                })
+                continue
 
             title = job.get(
                 "title",

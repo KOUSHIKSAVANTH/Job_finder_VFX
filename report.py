@@ -21,14 +21,89 @@ HEADERS = [
     "Source",
     "HR / contact emails",
     "Application links",
-    "Details"
+    "Details",
+    "Applied?"
 ]
 
 
-def write_report(rows):
+def get_applied_urls(base_dir=None):
+    """Return all job URLs manually marked as Applied in the Excel report."""
+    base = Path(base_dir) if base_dir else BASE_DIR
 
-    REPORT_DIR.mkdir(exist_ok=True)
-    HISTORY_DIR.mkdir(exist_ok=True)
+    candidates = [
+        base / "job_report.xlsx",
+        base / "reports" / "job_report.xlsx",
+    ]
+
+    if base.name == "reports":
+        candidates = [base / "job_report.xlsx", *candidates]
+
+    report_path = next((path for path in candidates if path.exists()), None)
+
+    if report_path is None:
+        return set()
+
+    try:
+        from openpyxl import load_workbook
+
+        workbook = load_workbook(
+            report_path,
+            read_only=True,
+            data_only=True
+        )
+        try:
+            sheet = workbook.active
+
+            rows = list(sheet.iter_rows(values_only=True))
+            if not rows:
+                return set()
+
+            headers = [str(value).strip().lower() if value is not None else "" for value in rows[0]]
+            url_index = headers.index("url") if "url" in headers else None
+            applied_index = None
+
+            for candidate in ("applied?", "applied"):
+                if candidate in headers:
+                    applied_index = headers.index(candidate)
+                    break
+
+            if url_index is None or applied_index is None:
+                return set()
+
+            applied_urls = set()
+
+            for row in rows[1:]:
+                if len(row) <= max(url_index, applied_index):
+                    continue
+
+                url_value = row[url_index]
+                applied_value = row[applied_index]
+
+                if url_value is None:
+                    continue
+
+                normalized_url = str(url_value).strip()
+                if not normalized_url:
+                    continue
+
+                if isinstance(applied_value, str) and applied_value.strip().lower() == "applied":
+                    applied_urls.add(normalized_url)
+
+            return applied_urls
+        finally:
+            workbook.close()
+
+    except Exception:
+        return set()
+
+
+def write_report(rows, base_dir=None):
+    base = Path(base_dir) if base_dir else BASE_DIR
+    report_dir = base / "reports"
+    history_dir = report_dir / "history"
+
+    report_dir.mkdir(exist_ok=True)
+    history_dir.mkdir(exist_ok=True)
 
     workbook = Workbook()
     sheet = workbook.active
@@ -58,7 +133,8 @@ def write_report(rows):
             row.get("source", ""),
             row.get("emails", ""),
             row.get("application_links", ""),
-            row.get("details", "")
+            row.get("details", ""),
+            row.get("applied_status", "")
         ])
 
     sheet.freeze_panes = "A2"
@@ -74,7 +150,8 @@ def write_report(rows):
         24,
         36,
         70,
-        52
+        52,
+        18
     ]
 
     for index, width in enumerate(widths, start=1):
@@ -93,8 +170,8 @@ def write_report(rows):
         "%Y%m%d_%H%M%S"
     )
 
-    current_path = REPORT_DIR / "job_report.xlsx"
-    history_path = HISTORY_DIR / (
+    current_path = report_dir / "job_report.xlsx"
+    history_path = history_dir / (
         f"job_report_{timestamp}.xlsx"
     )
 
