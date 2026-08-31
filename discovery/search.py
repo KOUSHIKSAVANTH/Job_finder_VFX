@@ -2,6 +2,7 @@ import os
 import re
 import requests
 
+from datetime import datetime, timedelta
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from difflib import SequenceMatcher
 
@@ -91,12 +92,17 @@ class JobSearch:
                     )
                 )
 
+                past_31_days = (
+                    datetime.now() - timedelta(days=31)
+                ).strftime("%Y-%m-%d")
+
                 queries.append(
                     (
                         role,
                         f'site:linkedin.com/posts '
                         f'"{role}" "{location}" '
-                        f'(hiring OR "looking for" OR apply)'
+                        f'(hiring OR "looking for" OR apply) '
+                        f'after:{past_31_days}'
                     )
                 )
 
@@ -138,6 +144,8 @@ class JobSearch:
             "quora.com",
             "rottentomatoes.com",
             "cgspectrum.com",
+            "bebee.com",
+            "upwork.com",
         ]
 
         if any(
@@ -367,7 +375,6 @@ class JobSearch:
             if not url:
                 continue
 
-
             title = item.get(
                 "title",
                 ""
@@ -378,6 +385,40 @@ class JobSearch:
                 ""
             )
 
+            is_linkedin_post = (
+                "linkedin.com/posts/" in str(url).lower()
+                or "linkedin.com/feed/update/"
+                in str(url).lower()
+            )
+
+            # Filter LinkedIn posts older than 31 days
+            if is_linkedin_post:
+                published_at = item.get(
+                    "published_at"
+                ) or item.get(
+                    "publish_date"
+                ) or item.get(
+                    "date"
+                )
+
+                if published_at:
+                    try:
+                        if isinstance(published_at, str):
+                            pub_date = datetime.fromisoformat(
+                                published_at.replace("Z", "+00:00")
+                            )
+                        else:
+                            pub_date = published_at
+
+                        cutoff_date = datetime.now() - timedelta(days=31)
+                        if pub_date.replace(tzinfo=None) < cutoff_date.replace(tzinfo=None):
+                            self.log(
+                                f"Skipping LinkedIn post older than 31 days: {url}"
+                            )
+                            skipped_results += 1
+                            continue
+                    except (ValueError, TypeError, AttributeError):
+                        pass
 
             if not self.is_valid_job_result(
                 title,
@@ -389,13 +430,6 @@ class JobSearch:
                 skipped_results += 1
 
                 continue
-
-
-            is_linkedin_post = (
-                "linkedin.com/posts/" in str(url).lower()
-                or "linkedin.com/feed/update/"
-                in str(url).lower()
-            )
 
             results.append({
                 "title": title,
