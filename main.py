@@ -118,6 +118,11 @@ def main():
         log(
             f"Discovered {len(jobs)} jobs."
         )
+        
+        if not jobs:
+            log(
+                "WARNING: No jobs discovered. Check search queries and API connection."
+            )
 
         extractor = JobExtractor(
             browser,
@@ -164,6 +169,9 @@ def main():
             processed_urls.add(url)
 
             if url in applied_urls:
+                log(
+                    f"  → Filtered by Excel: {title or url}"
+                )
                 skipped_count += 1
                 log(
                     f"Skipping marked applied in Excel: {url}"
@@ -205,8 +213,7 @@ def main():
                 skipped_count += 1
 
                 log(
-                    f"Skipping {previous_status.lower()}: "
-                    f"{url}"
+                    f"  → Skipping {previous_status.lower()}: {title or url}"
                 )
 
                 report_rows.append({
@@ -353,6 +360,10 @@ def main():
                     "details": str(error)
                 })
 
+        log(
+            f"\nReport rows to write: {len(report_rows)}"
+        )
+
         current_report = write_report(
             report_rows
         )
@@ -363,7 +374,8 @@ def main():
 
         log(
             "\nRun summary: "
-            f"{skipped_count} already processed, "
+            f"Skipped: {skipped_count}, "
+            f"Processed: {len(report_rows)}, "
             + ", ".join(
                 f"{status}={count}"
                 for status, count in result_counts.items()

@@ -67,10 +67,16 @@ class JobSearch:
             []
         )
 
+        keywords = self.preferences.get(
+            "keywords",
+            []
+        )
+
         for role in roles:
 
             for location in locations:
 
+                # Standard role-based queries
                 queries.append(
                     (
                         role,
@@ -92,16 +98,52 @@ class JobSearch:
                     )
                 )
 
-                past_31_days = (
-                    datetime.now() - timedelta(days=31)
-                ).strftime("%Y-%m-%d")
+                # Fresher/Junior variations
+                queries.append(
+                    (
+                        role,
+                        f'fresher "{role}" {location} jobs'
+                    )
+                )
 
+                queries.append(
+                    (
+                        role,
+                        f'junior "{role}" {location} hiring'
+                    )
+                )
+
+                queries.append(
+                    (
+                        role,
+                        f'"{role}" entry-level {location}'
+                    )
+                )
+
+                # LinkedIn searches
                 queries.append(
                     (
                         role,
                         f'site:linkedin.com/posts '
                         f'"{role}" "{location}" '
-                        f'(hiring OR "looking for" OR apply)'
+                        f'(hiring OR "looking for" OR apply OR fresher OR junior)'
+                    )
+                )
+
+        # Add keyword-based searches for broader coverage
+        for keyword in keywords[:5]:  # Limit to first 5 keywords to avoid too many queries
+            for location in locations:
+                queries.append(
+                    (
+                        keyword,
+                        f'{keyword} jobs {location}'
+                    )
+                )
+
+                queries.append(
+                    (
+                        keyword,
+                        f'{keyword} hiring {location} fresher'
                     )
                 )
 
@@ -323,7 +365,7 @@ class JobSearch:
 
 
     def is_linkedin_post_recent(self, url, snippet):
-        """Strictly reject LinkedIn posts older than 31 days."""
+        """Filter out old LinkedIn posts while being reasonable for niche VFX market."""
         if "linkedin.com/posts/" not in str(url).lower() and \
            "linkedin.com/feed/update/" not in str(url).lower():
             return True
@@ -335,18 +377,18 @@ class JobSearch:
         import re
         years_found = re.findall(r'\b(20\d{2}|2\d{2})\b', snippet_lower + " " + url_lower)
         
-        # If we find any year before 2026, reject it
+        # If we find any year before 2025, reject it (old posts)
         if years_found:
             for year_str in years_found:
                 try:
                     year = int(year_str)
-                    if year < 2026:  # Current year is 2026, reject anything older
+                    if year < 2025:  # Reject posts from 2024 and earlier
                         self.log(f"Rejecting LinkedIn post from year {year}: {url}")
                         return False
                 except ValueError:
                     pass
 
-        # Reject posts with clear "old" date indicators
+        # Reject posts with clear "very old" date indicators
         old_indicators = [
             "year ago",
             "years ago",
@@ -354,60 +396,24 @@ class JobSearch:
             "5 months ago",
             "4 months ago",
             "3 months ago",
-            "2 months ago",
-            "q1 ",
-            "q2 ",
-            "q3 ",
-            "q4 ",
-            "january",
-            "february",
-            "march",
-            "april",
-            "may",
-            "june",
         ]
 
         if any(indicator in snippet_lower for indicator in old_indicators):
-            self.log(f"Rejecting old LinkedIn post based on date indicator: {url}")
+            self.log(f"Rejecting old LinkedIn post (3+ months old): {url}")
             return False
 
-        # Only accept posts that explicitly mention recent dates
-        recent_indicators = [
-            "today",
-            "yesterday",
-            "1 day ago",
-            "2 days ago",
-            "3 days ago",
-            "4 days ago",
-            "5 days ago",
-            "6 days ago",
-            "7 days ago",
-            "1 week ago",
-            "2 weeks ago",
-            "3 weeks ago",
-            "4 weeks ago",
-            "august 2026",
-            "september 2026",
-        ]
+        # Block specific old months/years
+        very_old = ["january", "february", "march", "april", "may", "june", "q1 ", "q2 "]
+        if any(old in snippet_lower for old in very_old):
+            # Check if it's 2025 or 2026 - if so, might be OK
+            if "2025" in snippet_lower or "2026" in snippet_lower:
+                return True  # Could be recent
+            else:
+                return False  # Likely old
 
-        # If snippet doesn't show any recent date indicator, reject it
-        # (We can't confirm it's recent, so be safe)
-        has_recent_indicator = any(
-            indicator in snippet_lower for indicator in recent_indicators
-        )
-
-        if not has_recent_indicator:
-            # Double check: does it contain any date-like pattern that we can't verify?
-            date_patterns = re.findall(
-                r'(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d{1,2}/\d{1,2})',
-                snippet_lower
-            )
-            if date_patterns:
-                # Found date patterns but no recent indicator - reject to be safe
-                self.log(f"Rejecting LinkedIn post with uncertain date: {url}")
-                return False
-
-        return has_recent_indicator
+        # Accept posts that don't show clear old date indicators
+        # (For niche markets, newer posts might not have explicit timestamps)
+        return True
 
 
     def search(
