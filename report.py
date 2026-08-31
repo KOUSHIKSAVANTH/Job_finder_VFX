@@ -8,7 +8,6 @@ from openpyxl.utils import get_column_letter
 
 BASE_DIR = Path(__file__).resolve().parent
 REPORT_DIR = BASE_DIR / "reports"
-HISTORY_DIR = REPORT_DIR / "history"
 
 
 HEADERS = [
@@ -100,10 +99,8 @@ def get_applied_urls(base_dir=None):
 def write_report(rows, base_dir=None):
     base = Path(base_dir) if base_dir else BASE_DIR
     report_dir = base / "reports"
-    history_dir = report_dir / "history"
 
     report_dir.mkdir(exist_ok=True)
-    history_dir.mkdir(exist_ok=True)
 
     workbook = Workbook()
     sheet = workbook.active
@@ -166,16 +163,8 @@ def write_report(rows, base_dir=None):
                 wrap_text=True
             )
 
-    timestamp = datetime.now().strftime(
-        "%Y%m%d_%H%M%S"
-    )
-
     current_path = report_dir / "job_report.xlsx"
-    history_path = history_dir / (
-        f"job_report_{timestamp}.xlsx"
-    )
 
     workbook.save(current_path)
-    workbook.save(history_path)
 
-    return current_path, history_path
+    return current_path

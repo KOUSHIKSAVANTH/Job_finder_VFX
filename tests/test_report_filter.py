@@ -66,7 +66,7 @@ class AppliedStatusExcelTests(unittest.TestCase):
     def test_write_report_includes_applied_column(self):
         with TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir)
-            report_file, _ = write_report(
+            report_file = write_report(
                 [
                     {
                         "run_time": "2024-01-01T10:00:00",

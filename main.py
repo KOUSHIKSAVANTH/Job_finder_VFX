@@ -137,6 +137,7 @@ def main():
         skipped_count = 0
         result_counts = {}
         report_rows = []
+        processed_urls = set()  # Track all processed URLs in this run
         run_time = datetime.now().isoformat(
             timespec="seconds"
         )
@@ -152,6 +153,15 @@ def main():
         ):
 
             url = job["url"]
+
+            # Skip if already processed in this run
+            if url in processed_urls:
+                log(
+                    f"Skipping duplicate URL in this run: {url}"
+                )
+                continue
+
+            processed_urls.add(url)
 
             if url in applied_urls:
                 skipped_count += 1
@@ -343,16 +353,12 @@ def main():
                     "details": str(error)
                 })
 
-        current_report, history_report = write_report(
+        current_report = write_report(
             report_rows
         )
 
         log(
             f"Excel report: {current_report}"
-        )
-
-        log(
-            f"Report history: {history_report}"
         )
 
         log(

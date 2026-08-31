@@ -101,8 +101,7 @@ class JobSearch:
                         role,
                         f'site:linkedin.com/posts '
                         f'"{role}" "{location}" '
-                        f'(hiring OR "looking for" OR apply) '
-                        f'after:{past_31_days}'
+                        f'(hiring OR "looking for" OR apply)'
                     )
                 )
 
@@ -323,6 +322,94 @@ class JobSearch:
         return True
 
 
+    def is_linkedin_post_recent(self, url, snippet):
+        """Strictly reject LinkedIn posts older than 31 days."""
+        if "linkedin.com/posts/" not in str(url).lower() and \
+           "linkedin.com/feed/update/" not in str(url).lower():
+            return True
+
+        snippet_lower = str(snippet or "").lower()
+        url_lower = str(url or "").lower()
+
+        # Extract any 4-digit numbers that look like years from snippet and URL
+        import re
+        years_found = re.findall(r'\b(20\d{2}|2\d{2})\b', snippet_lower + " " + url_lower)
+        
+        # If we find any year before 2026, reject it
+        if years_found:
+            for year_str in years_found:
+                try:
+                    year = int(year_str)
+                    if year < 2026:  # Current year is 2026, reject anything older
+                        self.log(f"Rejecting LinkedIn post from year {year}: {url}")
+                        return False
+                except ValueError:
+                    pass
+
+        # Reject posts with clear "old" date indicators
+        old_indicators = [
+            "year ago",
+            "years ago",
+            "6 months ago",
+            "5 months ago",
+            "4 months ago",
+            "3 months ago",
+            "2 months ago",
+            "q1 ",
+            "q2 ",
+            "q3 ",
+            "q4 ",
+            "january",
+            "february",
+            "march",
+            "april",
+            "may",
+            "june",
+        ]
+
+        if any(indicator in snippet_lower for indicator in old_indicators):
+            self.log(f"Rejecting old LinkedIn post based on date indicator: {url}")
+            return False
+
+        # Only accept posts that explicitly mention recent dates
+        recent_indicators = [
+            "today",
+            "yesterday",
+            "1 day ago",
+            "2 days ago",
+            "3 days ago",
+            "4 days ago",
+            "5 days ago",
+            "6 days ago",
+            "7 days ago",
+            "1 week ago",
+            "2 weeks ago",
+            "3 weeks ago",
+            "4 weeks ago",
+            "august 2026",
+            "september 2026",
+        ]
+
+        # If snippet doesn't show any recent date indicator, reject it
+        # (We can't confirm it's recent, so be safe)
+        has_recent_indicator = any(
+            indicator in snippet_lower for indicator in recent_indicators
+        )
+
+        if not has_recent_indicator:
+            # Double check: does it contain any date-like pattern that we can't verify?
+            date_patterns = re.findall(
+                r'(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d{1,2}/\d{1,2})',
+                snippet_lower
+            )
+            if date_patterns:
+                # Found date patterns but no recent indicator - reject to be safe
+                self.log(f"Rejecting LinkedIn post with uncertain date: {url}")
+                return False
+
+        return has_recent_indicator
+
+
     def search(
         self,
         query,
@@ -391,34 +478,13 @@ class JobSearch:
                 in str(url).lower()
             )
 
-            # Filter LinkedIn posts older than 31 days
-            if is_linkedin_post:
-                published_at = item.get(
-                    "published_at"
-                ) or item.get(
-                    "publish_date"
-                ) or item.get(
-                    "date"
+            # Filter LinkedIn posts that appear to be older than 31 days
+            if is_linkedin_post and not self.is_linkedin_post_recent(url, snippet):
+                self.log(
+                    f"Skipping old LinkedIn post (not recent): {url}"
                 )
-
-                if published_at:
-                    try:
-                        if isinstance(published_at, str):
-                            pub_date = datetime.fromisoformat(
-                                published_at.replace("Z", "+00:00")
-                            )
-                        else:
-                            pub_date = published_at
-
-                        cutoff_date = datetime.now() - timedelta(days=31)
-                        if pub_date.replace(tzinfo=None) < cutoff_date.replace(tzinfo=None):
-                            self.log(
-                                f"Skipping LinkedIn post older than 31 days: {url}"
-                            )
-                            skipped_results += 1
-                            continue
-                    except (ValueError, TypeError, AttributeError):
-                        pass
+                skipped_results += 1
+                continue
 
             if not self.is_valid_job_result(
                 title,
