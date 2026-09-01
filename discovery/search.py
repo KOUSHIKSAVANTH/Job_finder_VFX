@@ -228,14 +228,16 @@ class JobSearch:
         # Reject obvious general search/category pages
         blocked_url_patterns = [
             "/search",
+            "/browse-careers",
             "job-search",
             "jobs-in-india",
             "linkedin.com/jobs",
-            "naukri.com/",
-            "instahyre.com/",
-            "animationandvfxjobs.com/",
-            "ziprecruiter.com/jobs",
-            "/browse-careers"
+            "linkedin.com/in/",
+            "linkedin.com/pub/",
+            "/jobs?",
+            "/career/",
+            "/careers/",
+            "?page="
         ]
 
         if any(
@@ -243,6 +245,18 @@ class JobSearch:
             for pattern in blocked_url_patterns
         ):
             return False
+
+        # Reject senior-level experience requirements for fresher searches
+        years_pattern = re.search(
+            r"(\d+\s*[-–+to]+\s*\d+|\d+\+?)\s*(years?|yrs?)\s*(?:of\s*)?experience",
+            snippet_lower + " " + title_lower,
+            flags=re.IGNORECASE,
+        )
+
+        if years_pattern:
+            years_match = years_pattern.group(0)
+            if re.search(r"\b(3|4|5|6|7|8|9|10)\b", years_match):
+                return False
 
 
         # Reject titles advertising a large number
@@ -253,14 +267,45 @@ class JobSearch:
         ):
             return False
 
-
-        # The result should contain either the role
-        # or strong job-related language
         combined_text = (
             title_lower
             + " "
             + snippet_lower
         )
+
+        seniority_blockers = [
+            "senior",
+            "lead",
+            "staff",
+            "manager",
+            "principal",
+            "expert",
+            "architect",
+            "team lead",
+            "3 years",
+            "4 years",
+            "5 years",
+            "6 years",
+            "7 years",
+            "8 years",
+            "9 years",
+            "10 years",
+            "3+ years",
+            "4+ years",
+            "5+ years",
+            "3-5 years",
+            "5-10 years",
+            "8-10 years",
+        ]
+
+        if any(
+            keyword in combined_text for keyword in seniority_blockers
+        ):
+            return False
+
+
+        # The result should contain either the role
+        # or strong job-related language
 
         job_signals = [
             "job",

@@ -5,6 +5,7 @@ from tempfile import TemporaryDirectory
 from openpyxl import Workbook
 
 from report import get_applied_urls, write_report
+from discovery.search import JobSearch
 
 
 class AppliedStatusExcelTests(unittest.TestCase):
@@ -90,6 +91,42 @@ class AppliedStatusExcelTests(unittest.TestCase):
                 report_file.parent.name,
                 "reports",
             )
+
+    def test_linkedin_profile_urls_are_rejected(self):
+        search = JobSearch({"roles": ["Compositor"], "locations": ["Hyderabad"]})
+
+        self.assertFalse(
+            search.is_valid_job_result(
+                "Jalluri Rakesh",
+                "https://www.linkedin.com/in/jalluri-rakesh-208b2b211",
+                "Professional profile",
+                "Compositor",
+            )
+        )
+
+    def test_experienced_jobs_are_rejected_for_fresher_searches(self):
+        search = JobSearch({"roles": ["Compositor"], "locations": ["Hyderabad"]})
+
+        self.assertFalse(
+            search.is_valid_job_result(
+                "Lead Compositor - 5 to 10 years experience",
+                "https://example.com/jobs/lead-compositor",
+                "We are hiring a lead compositor with 5+ years experience.",
+                "Compositor",
+            )
+        )
+
+    def test_fresher_role_is_allowed(self):
+        search = JobSearch({"roles": ["Compositor"], "locations": ["Hyderabad"]})
+
+        self.assertTrue(
+            search.is_valid_job_result(
+                "Fresher Compositor",
+                "https://example.com/jobs/fresher-compositor",
+                "We are hiring freshers for compositor role.",
+                "Compositor",
+            )
+        )
 
 
 if __name__ == "__main__":

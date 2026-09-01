@@ -45,24 +45,28 @@ class EmailApplication:
             f"Application for {role}"
         )
 
+        github = self.profile.get("github", "")
+        portfolio = self.profile.get("portfolio_url", "")
+        linkedin = self.profile.get("linkedin", "")
+        name = self.profile.get("name", "")
+        phone = self.profile.get("phone", "")
+
         message.set_content(
             f"""Hello,
 
 I am applying for the {role} position at {company}.
 
-Please find my resume attached.
+I have attached my resume for your review.
 
-Portfolio / Showreel:
-{self.profile["portfolio_url"]}
-
-LinkedIn:
-{self.profile["linkedin"]}
+Portfolio / Showreel: {portfolio}
+LinkedIn: {linkedin}
+GitHub: {github}
 
 Thank you for your consideration.
 
 Best regards,
-{self.profile["name"]}
-{self.profile["phone"]}
+{name}
+{phone}
 """
         )
 
